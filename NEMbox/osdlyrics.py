@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 # osdlyrics.py --- desktop lyrics for musicbox
 # Copyright (c) 2015-2016 omi & Contributors
-from __future__ import print_function, unicode_literals, division, absolute_import
+from __future__ import (
+    print_function, unicode_literals, division, absolute_import
+)
 
 import sys
 from multiprocessing import Process
@@ -17,50 +19,62 @@ log = logger.getLogger(__name__)
 config = Config()
 
 try:
-    from PyQt4 import QtGui, QtCore, QtDBus
-
+    #from PyQt4 import QtGui, QtCore, QtDBus
+    '''
+    from PyQt5 import QtWidgets as Qt5Widgets
+    from PyQt5 import QtGui as Qt5Gui
+    from PyQt5 import QtCore as Qt5Core
+    '''
+    from PyQt5 import QtWidgets, QtGui, QtCore, QtDBus, QtPrintSupport
     pyqt_activity = True
 except ImportError:
     pyqt_activity = False
-    log.warn("PyQt4 module not installed.")
+    log.warn("PyQt5 module not installed.")
     log.warn("Osdlyrics Not Available.")
 
 if pyqt_activity:
 
-    class Lyrics(QtGui.QWidget):
+    #class Lyrics(QtGui.QWidget):
+    class Lyrics(QtWidgets.QWidget):
+
         def __init__(self):
             super(Lyrics, self).__init__()
             self.__dbusAdaptor = LyricsAdapter(self)
             self.initUI()
 
         def initUI(self):
-            self.setStyleSheet("background:" + config.get("osdlyrics_background"))
+            self.setStyleSheet("background:" + config.get(
+                "osdlyrics_background"))
             if config.get("osdlyrics_transparent"):
                 self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
             self.setAttribute(QtCore.Qt.WA_ShowWithoutActivating)
             self.setAttribute(QtCore.Qt.WA_X11DoNotAcceptFocus)
             self.setFocusPolicy(QtCore.Qt.NoFocus)
             if config.get("osdlyrics_on_top"):
-                self.setWindowFlags(
-                    QtCore.Qt.FramelessWindowHint
-                    | QtCore.Qt.WindowStaysOnTopHint
-                    | QtCore.Qt.X11BypassWindowManagerHint
-                )
+                self.setWindowFlags(QtCore.Qt.FramelessWindowHint |
+                                    QtCore.Qt.WindowStaysOnTopHint |
+                                    QtCore.Qt.X11BypassWindowManagerHint)
             else:
                 self.setWindowFlags(QtCore.Qt.FramelessWindowHint)
             self.setMinimumSize(600, 50)
             osdlyrics_size = config.get("osdlyrics_size")
             self.resize(osdlyrics_size[0], osdlyrics_size[1])
+            '''
             scn = QtGui.QApplication.desktop().screenNumber(
-                QtGui.QApplication.desktop().cursor().pos()
-            )
+                QtGui.QApplication.desktop().cursor().pos())
             bl = QtGui.QApplication.desktop().screenGeometry(scn).bottomLeft()
             br = QtGui.QApplication.desktop().screenGeometry(scn).bottomRight()
+            '''
+            scn = QtWidgets.QApplication.desktop().screenNumber(
+                QtWidgets.QApplication.desktop().cursor().pos())
+            bl = QtWidgets.QApplication.desktop().screenGeometry(scn).bottomLeft()
+            br = QtWidgets.QApplication.desktop().screenGeometry(scn).bottomRight()
             bc = (bl + br) / 2
             frameGeo = self.frameGeometry()
             frameGeo.moveCenter(bc)
             frameGeo.moveBottom(bc.y())
             self.move(frameGeo.topLeft())
+            #self.text = "OSD Lyrics for Musicbox"
             self.text = "OSD Lyrics for Musicbox"
             self.setWindowTitle("Lyrics")
             self.show()
@@ -69,7 +83,7 @@ if pyqt_activity:
             self.mpos = event.pos()
 
         def mouseMoveEvent(self, event):
-            if event.buttons() and QtCore.Qt.LeftButton:
+            if (event.buttons() and QtCore.Qt.LeftButton):
                 diff = event.pos() - self.mpos
                 newpos = self.pos() + diff
                 self.move(newpos)
@@ -79,6 +93,7 @@ if pyqt_activity:
 
         def paintEvent(self, event):
             qp = QtGui.QPainter()
+            #qp.setRenderHint(QtGui.QPainter.TextAntialiasing,True)
             qp.begin(self)
             self.drawText(event, qp)
             qp.end()
@@ -87,14 +102,12 @@ if pyqt_activity:
             osdlyrics_color = config.get("osdlyrics_color")
             osdlyrics_font = config.get("osdlyrics_font")
             font = QtGui.QFont(osdlyrics_font[0], osdlyrics_font[1])
-            pen = QtGui.QColor(
-                osdlyrics_color[0], osdlyrics_color[1], osdlyrics_color[2]
-            )
+            pen = QtGui.QColor(osdlyrics_color[0], osdlyrics_color[1],
+                               osdlyrics_color[2])
             qp.setFont(font)
             qp.setPen(pen)
-            qp.drawText(
-                event.rect(), QtCore.Qt.AlignCenter | QtCore.Qt.TextWordWrap, self.text
-            )
+            qp.drawText(event.rect(), QtCore.Qt.AlignCenter |
+                        QtCore.Qt.TextWordWrap, self.text)
 
     class LyricsAdapter(QtDBus.QDBusAbstractAdaptor):
         QtCore.Q_CLASSINFO("D-Bus Interface", "local.musicbox.Lyrics")
@@ -103,24 +116,26 @@ if pyqt_activity:
             '  <interface name="local.musicbox.Lyrics">\n'
             '    <method name="refresh_lyrics">\n'
             '      <arg direction="in" type="s" name="lyric"/>\n'
-            "    </method>\n"
-            "  </interface>\n",
-        )
+            '    </method>\n'
+            '  </interface>\n')
 
         def __init__(self, parent):
             super(LyricsAdapter, self).__init__(parent)
 
         @QtCore.pyqtSlot(str)
         def refresh_lyrics(self, text):
-            self.parent().text = text.replace("||", "\n")
+            self.parent().text = text.replace('||', '\n')
+            if self.parent().text.strip() == '':
+                self.parent().text = '● ● ● ● ● ●'
             self.parent().repaint()
 
     def show_lyrics():
 
-        app = QtGui.QApplication(sys.argv)
+        #app = QtGui.QApplication(sys.argv)
+        app = QtWidgets .QApplication(sys.argv)
         lyrics = Lyrics()
-        QtDBus.QDBusConnection.sessionBus().registerService("org.musicbox.Bus")
-        QtDBus.QDBusConnection.sessionBus().registerObject("/", lyrics)
+        QtDBus.QDBusConnection.sessionBus().registerService('org.musicbox.Bus')
+        QtDBus.QDBusConnection.sessionBus().registerObject('/', lyrics)
         sys.exit(app.exec_())
 
 
